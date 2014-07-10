@@ -58,6 +58,8 @@ end
 
 class RentService
   def open_rent(user, bike_id)
+    raise AlreadyHaveRent.new('User already rent some bike.') if has_rent?(user)
+
     bike = Bike[bike_id]
     gate_number = bike.gate_number
     bike.update(gate_number: -1)
@@ -66,8 +68,10 @@ class RentService
     {gate_number: gate_number, openned_at: rent.openned_at}
   end
 
-  def close(user, gate_number)
-    rent = Rent.where(closed: false, user_id: user.id)
+  def close_rent(user, gate_number)
+    rent = Rent.where(closed: false, user_id: user.id).first
+    raise HaveNotRent.new('User have not rent to close.') if rent.nil?
+
     Bike[rent.bike_id].update(gate_number: gate_number)
     rent.update(closed: true, closed_at: DateTime.now)
 
@@ -75,13 +79,15 @@ class RentService
   end
 
   def has_rent?(user)
-    !Bike.where(closed: false, user_id: user.id).empty?
+    !Rent.where(closed: false, user_id: user.id).empty?
   end
 end
 
 class UserAuthenticator
   def authenticate(email, pin)
-    User.where(email: email, pin: pin).first
+    user = User.where(email: email, pin: pin).first
+    raise NotAuthorized.new('Email or pin is wrong') if user.nil?
+    user
   end
 end
 
@@ -109,31 +115,59 @@ get '/users' do
 end
 
 get '/bikes' do
-  bikes = Bike.select(:id).where('gate_number != -1')
+  begin
+    user = UserAuthenticator.new.authenticate(params[:email], params[:pin])
+    bikes = Bike.select(:id).where('gate_number != -1')
+  rescue NotAuthorized => e
+    return json msg: e.message, status: 401
+  end
+  
   json data: BikePresenter.wrap!(bikes)
 end 
 
 get '/has_rent' do
-  user = UserAuthenticator.new.authenticate(params[:email], params[:pin])
-  if user.nil?
-    json msg: 'Email or pin incorrect', status: 401
-  else
-    use_case = RentService.new
+  use_case = RentService.new
 
-    json data: use_case.has_rent?(user)
+  begin
+    user = UserAuthenticator.new.authenticate(params[:email], params[:pin])
+    res = use_case.has_rent?(user)
+  rescue NotAuthorized => e
+    return json msg: e.message, status: 401
   end
+
+  json data: res
 end
 
 post '/start_rent' do
-  user = UserAuthenticator.new.authenticate(params[:email], params[:pin])
   use_case = RentService.new
-  res = use_case.open_rent(user, params[:bike_id])
-  {data: {gate_number: res.gate_number, openned_at: res.openned_at}}
+
+  begin
+    user = UserAuthenticator.new.authenticate(params[:email], params[:pin])
+    res = use_case.open_rent(user, params[:bike_id])
+  rescue AlreadyHaveRent => e
+    return json msg: e.message, status: 403
+  rescue NotAuthorized => e
+    return json msg: e.message, status: 401
+  end
+
+  json data: res
 end
 
 post '/close_rent' do 
-  user = UserAuthenticator.new.authenticate(params[:email], params[:pin])
   use_case = RentService.new
-  res = use_case.close_rent(user, params[:gate_number])
-  {date: {closed_at: res.closed_at, money: res.money}}
+
+  begin
+    user = UserAuthenticator.new.authenticate(params[:email], params[:pin])
+    res = use_case.close_rent(user, params[:gate_number])
+  rescue NotAuthorized => e
+    return json msg: e.message, status: 401
+  rescue HaveNotRent => e
+    return json msg: e.message, status: 403
+  end
+  
+  json date: res
 end
+
+class AlreadyHaveRent < StandardError; end
+class NotAuthorized < StandardError; end
+class HaveNotRent < StandardError; end
