@@ -4,5 +4,7 @@ source "https://rubygems.org"
 #ruby-gemset=bikestation
 
 gem 'sinatra'
+gem 'sinatra-contrib'
 gem 'sequel'
 gem 'sqlite3'
+gem 'rack-parser'
