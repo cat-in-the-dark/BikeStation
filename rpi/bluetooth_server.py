@@ -29,29 +29,40 @@ class ClientThread(threading.Thread):
     def run(self):
         try:
             on_bike = False
-            recv_data = self.recv()
-            parsed_data = json.loads(recv_data)
-            if parsed_data[COMMAND] == HELLO:
-                login = parsed_data[LOGIN]
-                pin = parsed_data[PIN]
-                self._credentials = {
-                    LOGIN: login,
-                    PIN: pin
-                }
-                has_rent_resp = requests.get(self._endpoint + GET_HAS_RENT, params=self._credentials).json()
-                log.debug(has_rent_resp)
-                if has_rent_resp[STATUS] is not None:
-                    if has_rent_resp[STATUS] == HTTP_STATUS_UNAUTHORIZED:
-                        self.send(json.dumps({STATUS: ERROR, MESSAGE: has_rent_resp[MESSAGE]}))
-                    elif has_rent_resp[STATUS] == HTTP_STATUS_OK:
-                        self.send(json.dumps({STATUS: OK, ON_BIKE: has_rent_resp[DATA]}))
+            while True:
+                recv_data = self.recv()
+                parsed_data = json.loads(recv_data)
+                if parsed_data[COMMAND] == HELLO:
+                    login = parsed_data[LOGIN]
+                    pin = parsed_data[PIN]
+                    self._credentials = {
+                        LOGIN: login,
+                        PIN: pin
+                    }
+                    has_rent_resp = requests.get(self._endpoint + GET_HAS_RENT, params=self._credentials).json()
+                    log.debug(has_rent_resp)
+                    if has_rent_resp[STATUS] is not None:
+                        if has_rent_resp[STATUS] == HTTP_STATUS_UNAUTHORIZED:
+                            self.send(json.dumps({STATUS: ERROR, MESSAGE: has_rent_resp[MESSAGE]}))
+                            break
+                        elif has_rent_resp[STATUS] == HTTP_STATUS_OK:
+                            self.send(json.dumps({STATUS: OK, ON_BIKE: has_rent_resp[DATA]}))
+                            continue
+                    else:
+                        log.error("Response has not status")
 
-            if parsed_data[COMMAND] == GET_BIKES_LIST:
-                self.send(json.dumps({BIKE_LIST: [1, 2, 3, 4]}))
-            if parsed_data[COMMAND] == SELECT_BIKE:
-                self.send(json.dumps({STATUS: OK}))
-            if parsed_data[COMMAND] == RETURN_BIKE:
-                self.send(json.dumps({STATUS: OK}))
+                if parsed_data[COMMAND] == GET_BIKES_LIST:
+                    get_bikes_resp = requests.get(self._endpoint + GET_BIKES, params=self._credentials).json()
+                    if get_bikes_resp[STATUS] is not None:
+                        if get_bikes_resp[STATUS] == HTTP_STATUS_OK:
+                            bikes_list = get_bikes_resp[DATA]
+                            log.debug(bikes_list)
+                            self.send(json.dumps({STATUS: OK, BIKE_LIST: [bike["id"] for bike in bikes_list]}))
+
+                if parsed_data[COMMAND] == SELECT_BIKE:
+                    self.send(json.dumps({STATUS: OK}))
+                if parsed_data[COMMAND] == RETURN_BIKE:
+                    self.send(json.dumps({STATUS: OK}))
         except IOError as e:
             log.error('error:%s' % e.message)
         except Exception as e:
