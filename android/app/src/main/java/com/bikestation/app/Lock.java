@@ -121,58 +121,11 @@ public class Lock {
         }
     }
 
-    public static class OpenTask extends AsyncTask<String, String, String> {
-
-        private final String login;
-        private final String password;
-        private final ImageButton btnOpen;
-
-        public OpenTask(String login, String password, ImageButton btnOpen){
-            this.login = login;
-            this.password = password;
-            this.btnOpen = btnOpen;
-        }
-
-        protected void onPreExecute() {
-            btnOpen.setEnabled(false);
-            btnOpen.setImageResource(R.drawable.lock_green);
-            btnOpen.invalidate();
-        }
-
-        @Override
-        protected String doInBackground(String... strings) {
-            BluetoothConnector connector = ExtApp.bluetoothConnector;
-            try {
-                connector.send("open:" + login + ":" + password);
-                connector.recieve();
-            } catch (IOException e) {
-                Log.e("Bluetooth", "ConnectionTask error" + e.getMessage());
-                try {
-                    connector.disconnect();
-                } catch (IOException e1) {
-                    return null;
-                }
-            }
-            return null;
-        }
-
-        protected void onPostExecute(String result) {
-            btnOpen.setEnabled(true);
-            btnOpen.setImageResource(R.drawable.lock);
-            btnOpen.invalidate();
-        }
-    }
-
-
     public static class BikesTask extends AsyncTask<String, String, String> {
 
-        private final String login;
-        private final String password;
         private final BikesAdapter adapter;
 
-        public BikesTask(String login, String password, BikesAdapter adapter){
-            this.login = login;
-            this.password = password;
+        public BikesTask(BikesAdapter adapter){
             this.adapter = adapter;
         }
 
@@ -216,6 +169,59 @@ public class Lock {
 
         protected void onPostExecute(String result) {
             adapter.notifyDataSetChanged();
+        }
+    }
+
+    public static class GetBikeTask extends AsyncTask<String, String, String> {
+
+        private final Activity activity;
+        private final String bikeId;
+        private String status;
+
+        public GetBikeTask(Activity activity, String bikeId){
+            this.activity = activity;
+            this.bikeId = bikeId;
+        }
+
+        protected void onPreExecute() {
+        }
+
+        @Override
+        protected String doInBackground(String... strings) {
+            BluetoothConnector connector = ExtApp.bluetoothConnector;
+            try {
+                JSONObject helloRequest = new JSONObject();
+                helloRequest.put("command", "selectBike");
+                helloRequest.put("bikeId", bikeId);
+                connector.send(helloRequest.toString());
+
+                String response = connector.recieve();
+                JSONParser parser = new JSONParser();
+                JSONObject responseJson;
+                try {
+                    responseJson = (JSONObject)parser.parse(response);
+                } catch (ParseException e) {
+                    return null;
+                }
+                status = responseJson.get("status").toString();
+                if (!status.equals("OK"))
+                    return null;
+            } catch (IOException e) {
+                Log.e("Bluetooth", "ConnectionTask error" + e.getMessage());
+                try {
+                    connector.disconnect();
+                } catch (IOException e1) {
+                    return null;
+                }
+            }
+            return null;
+        }
+
+        protected void onPostExecute(String result) {
+            if ("OK".equals(status)) {
+                Intent intent = new Intent(activity, TimeActivity.class);
+                activity.startActivity(intent);
+            }
         }
     }
 }
