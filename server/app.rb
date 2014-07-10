@@ -15,7 +15,7 @@ unless DB.table_exists? (:users)
   DB.create_table :users do
     primary_key :id
     String :email
-    String :pin
+    String :PIN
   end
 end
 unless DB.table_exists? (:bikes)  
@@ -115,34 +115,37 @@ get '/users' do
 end
 
 get '/bikes' do
+  puts "PARAMS: #{params}"
   begin
-    user = UserAuthenticator.new.authenticate(params[:email], params[:pin])
+    user = UserAuthenticator.new.authenticate(params[:login], params[:PIN])
     bikes = Bike.select(:id).where('gate_number != -1')
   rescue NotAuthorized => e
     return json msg: e.message, status: 401
   end
   
-  json data: BikePresenter.wrap!(bikes)
+  json data: BikePresenter.wrap!(bikes), status: 200
 end 
 
 get '/has_rent' do
+  puts "PARAMS: #{params}"
   use_case = RentService.new
 
   begin
-    user = UserAuthenticator.new.authenticate(params[:email], params[:pin])
+    user = UserAuthenticator.new.authenticate(params[:login], params[:PIN])
     res = use_case.has_rent?(user)
   rescue NotAuthorized => e
     return json msg: e.message, status: 401
   end
 
-  json data: res
+  json data: res, status: 200
 end
 
 post '/start_rent' do
+  puts "PARAMS: #{params}"
   use_case = RentService.new
 
   begin
-    user = UserAuthenticator.new.authenticate(params[:email], params[:pin])
+    user = UserAuthenticator.new.authenticate(params[:login], params[:PIN])
     res = use_case.open_rent(user, params[:bike_id])
   rescue AlreadyHaveRent => e
     return json msg: e.message, status: 403
@@ -150,14 +153,15 @@ post '/start_rent' do
     return json msg: e.message, status: 401
   end
 
-  json data: res
+  json data: res, status: 202
 end
 
-post '/close_rent' do 
+post '/close_rent' do
+  puts "PARAMS: #{params}" 
   use_case = RentService.new
 
   begin
-    user = UserAuthenticator.new.authenticate(params[:email], params[:pin])
+    user = UserAuthenticator.new.authenticate(params[:login], params[:PIN])
     res = use_case.close_rent(user, params[:gate_number])
   rescue NotAuthorized => e
     return json msg: e.message, status: 401
@@ -165,7 +169,7 @@ post '/close_rent' do
     return json msg: e.message, status: 403
   end
   
-  json date: res
+  json date: res, status: 202
 end
 
 class AlreadyHaveRent < StandardError; end
