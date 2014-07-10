@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">SmartLock</string>
+    <string name="hello_world">Hello world!</string>
+    <string name="action_settings">Settings</string>
+    <string name="account">Аккаунт</string>
+    <string name="title_activity_device">Устройства</string>
+    <string name="title_activity_log">История</string>
+    <string name="title_activity_bike">Доступные велосипеды</string>
+    <string name="device_finding">Выполняется поиск устройств</string>
+    <string name="status">status</string>
+    <string name="title_activity_invitation">InvitationActivity</string>
+
+</resources>
