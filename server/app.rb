@@ -51,6 +51,11 @@ class Station < Sequel::Model(:stations)
 end
 
 class Bike < Sequel::Model(:bikes)
+  plugin :validation_helpers
+  def validate
+    super
+    validates_unique [:gate_number, :station_id]
+  end
 end
 
 class Rent < Sequel::Model(:rents)
