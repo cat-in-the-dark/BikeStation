@@ -76,8 +76,11 @@ class RentService
   def close_rent(user, gate_number)
     rent = Rent.where(closed: false, user_id: user.id).first
     raise HaveNotRent.new('User have not rent to close.') if rent.nil?
-
-    Bike[rent.bike_id].update(gate_number: gate_number)
+    begin
+      Bike[rent.bike_id].update(gate_number: gate_number)
+    rescue Sequel::ValidationFailed => e
+      raise GateNumberInUse.new('This gate is used by another bike.')
+    end
     rent.update(closed: true, closed_at: DateTime.now)
 
     {closed_at: rent.closed_at, money: 100}
@@ -172,6 +175,8 @@ post '/close_rent' do
     return json msg: e.message, status: 401
   rescue HaveNotRent => e
     return json msg: e.message, status: 403
+  rescue GateNumberInUse => e
+    return json msg: e.message, status: 403
   end
   
   json date: res, status: 202
@@ -180,3 +185,4 @@ end
 class AlreadyHaveRent < StandardError; end
 class NotAuthorized < StandardError; end
 class HaveNotRent < StandardError; end
+class GateNumberInUse < StandardError; end
