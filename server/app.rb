@@ -8,6 +8,7 @@ OK = 200
 ACCEPTED = 202
 UNAUTHORIZED = 401
 FORBIDDEN = 403
+NOT_FOUND = 404
 
 
 use Rack::Parser, :content_types => {
@@ -71,6 +72,8 @@ class RentService
     raise AlreadyHaveRent.new('User already rent some bike.') if has_rent?(user)
 
     bike = Bike[bike_id]
+    raise NotFound.new('Bike not found') if bike.nil?
+
     gate_number = bike.gate_number
     bike.update(gate_number: -1)
     rent = Rent.create(user_id: user.id, bike_id: bike.id, openned_at: DateTime.now)
@@ -81,8 +84,12 @@ class RentService
   def close_rent(user, gate_number)
     rent = Rent.where(closed: false, user_id: user.id).first
     raise HaveNotRent.new('User have not rent to close.') if rent.nil?
+
+    bike = Bike[rent.bike_id]
+    raise NotFound.new('Bike not foud') if bike.nil?
+
     begin
-      Bike[rent.bike_id].update(gate_number: gate_number)
+      bike.update(gate_number: gate_number)
     rescue Sequel::ValidationFailed => e
       raise GateNumberInUse.new('This gate is used by another bike.')
     end
@@ -164,6 +171,8 @@ post '/start_rent' do
     return json msg: e.message, status: FORBIDDEN
   rescue NotAuthorized => e
     return json msg: e.message, status: UNAUTHORIZED
+  rescue NotFound => e
+    return json msg: e.message, status: NOT_FOUND
   end
 
   json data: res, status: ACCEPTED
@@ -182,6 +191,8 @@ post '/close_rent' do
     return json msg: e.message, status: FORBIDDEN
   rescue GateNumberInUse => e
     return json msg: e.message, status: FORBIDDEN
+  rescue NotFound => e
+    return json msg: e.message, status: NOT_FOUND
   end
   
   json date: res, status: ACCEPTED
@@ -191,3 +202,4 @@ class AlreadyHaveRent < StandardError; end
 class NotAuthorized < StandardError; end
 class HaveNotRent < StandardError; end
 class GateNumberInUse < StandardError; end
+class NotFound < StandardError; end
