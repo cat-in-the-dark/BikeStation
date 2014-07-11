@@ -1,0 +1,46 @@
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#FFCE00"
+    tools:context="com.bikestation.app.activity.AccountActivity">
+
+    <LinearLayout
+        android:id="@+id/main_input_layout"
+        android:layout_height="wrap_content"
+        android:layout_width="fill_parent"
+        android:layout_centerInParent="true"
+        android:orientation="vertical">
+        <EditText
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="50dp"
+            android:layout_marginRight="50dp"
+            android:hint="Логин"
+            android:inputType="text"
+            android:id="@+id/etLogin"/>
+        <EditText
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="50dp"
+            android:layout_marginRight="50dp"
+            android:hint="Пароль"
+            android:inputType="textPassword"
+            android:id="@+id/etPassword" android:layout_gravity="center"/>
+        <Button
+            android:layout_width="fill_parent"
+            android:layout_height="40dp"
+            android:layout_marginLeft="50dp"
+            android:layout_marginRight="50dp"
+            android:textColor="#FF9E00"
+            android:shadowColor="#FF8300"
+            android:shadowDx="1"
+            android:shadowDy="1"
+            android:textSize="20sp"
+            android:background="@android:drawable/dark_header"
+            android:id="@+id/btEnter"
+            android:text="Войти"
+            android:layout_gravity="center"/>
+    </LinearLayout>
+
+</RelativeLayout>

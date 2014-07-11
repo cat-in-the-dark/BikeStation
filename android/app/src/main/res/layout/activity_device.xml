@@ -1,0 +1,40 @@
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#40E0D0"
+    tools:context="com.bikestation.app.activity.DeviceActivity">
+
+    <ListView
+        android:id="@+id/lv_devices"
+        android:layout_width="fill_parent"
+        android:layout_height="fill_parent" />
+
+    <RelativeLayout
+        android:id="@+id/scanning_view"
+        android:layout_width="fill_parent"
+        android:layout_height="fill_parent"
+        android:background="#CC000000">
+
+        <LinearLayout
+            android:layout_centerInParent="true"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                android:textColor="@android:color/darker_gray"
+                android:text="@string/device_finding"/>
+            <ProgressBar
+                style="?android:attr/progressBarStyleLarge"
+                android:layout_width="100dp"
+                android:layout_height="100dp"
+                android:layout_gravity="center_horizontal"/>
+        </LinearLayout>
+    </RelativeLayout>
+
+</RelativeLayout>
