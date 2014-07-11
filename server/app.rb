@@ -68,20 +68,20 @@ class Rent < Sequel::Model(:rents)
 end
 
 class RentService
-  def open_rent(user, bike_id)
+  def open_rent(user, bike_id, station_id)
     raise AlreadyHaveRent.new('User already rent some bike.') if has_rent?(user)
 
-    bike = Bike[bike_id]
+    bike = Bike.where(station_id: station_id, id: bike_id).last
     raise NotFound.new('Bike not found') if bike.nil?
 
     gate_number = bike.gate_number
-    bike.update(gate_number: -1)
+    bike.update(gate_number: -1, station_id: nil)
     rent = Rent.create(user_id: user.id, bike_id: bike.id, openned_at: DateTime.now)
     
     {gate_number: gate_number, openned_at: rent.openned_at}
   end
 
-  def close_rent(user, gate_number)
+  def close_rent(user, gate_number, station_id)
     rent = Rent.where(closed: false, user_id: user.id).first
     raise HaveNotRent.new('User have not rent to close.') if rent.nil?
 
@@ -89,7 +89,7 @@ class RentService
     raise NotFound.new('Bike not foud') if bike.nil?
 
     begin
-      bike.update(gate_number: gate_number)
+      bike.update(gate_number: gate_number, station_id: station_id)
     rescue Sequel::ValidationFailed => e
       raise GateNumberInUse.new('This gate is used by another bike.')
     end
@@ -138,7 +138,7 @@ get '/bikes' do
   puts "PARAMS: #{params}"
   begin
     user = UserAuthenticator.new.authenticate(params[:login], params[:PIN])
-    bikes = Bike.select(:id).where('gate_number != -1')
+    bikes = Bike.select(:id).where('gate_number != :gate_number AND station_id = :station_id', gate_number: -1, station_id: params[:stationId])
   rescue NotAuthorized => e
     return json msg: e.message, status: UNAUTHORIZED
   end
@@ -166,7 +166,7 @@ post '/start_rent' do
 
   begin
     user = UserAuthenticator.new.authenticate(params[:login], params[:PIN])
-    res = use_case.open_rent(user, params[:bikeId])
+    res = use_case.open_rent(user, params[:bikeId], params[:stationId])
   rescue AlreadyHaveRent => e
     return json msg: e.message, status: FORBIDDEN
   rescue NotAuthorized => e
@@ -184,7 +184,7 @@ post '/close_rent' do
 
   begin
     user = UserAuthenticator.new.authenticate(params[:login], params[:PIN])
-    res = use_case.close_rent(user, params[:gateNumber])
+    res = use_case.close_rent(user, params[:gateNumber], params[:stationId])
   rescue NotAuthorized => e
     return json msg: e.message, status: UNAUTHORIZED
   rescue HaveNotRent => e
