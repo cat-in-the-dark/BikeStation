@@ -16,9 +16,8 @@ use Rack::Parser, :content_types => {
 
 DB = Sequel.sqlite('bike_station.db')
 
-
 unless DB.table_exists? (:users)
-  DB.create_table :users dof
+  DB.create_table :users do
     primary_key :id
     String :email
     String :PIN
