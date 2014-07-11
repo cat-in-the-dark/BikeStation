@@ -4,6 +4,12 @@ require 'sequel'
 require 'sqlite3'
 require 'rack/parser'
 
+OK = 200
+ACCEPTED = 202
+UNAUTHORIZED = 401
+FORBIDDEN = 403
+
+
 use Rack::Parser, :content_types => {
   'application/json'  => Proc.new { |body| ::MultiJson.decode body }
 }
@@ -12,7 +18,7 @@ DB = Sequel.sqlite('bike_station.db')
 
 
 unless DB.table_exists? (:users)
-  DB.create_table :users do
+  DB.create_table :users dof
     primary_key :id
     String :email
     String :PIN
@@ -128,10 +134,10 @@ get '/bikes' do
     user = UserAuthenticator.new.authenticate(params[:login], params[:PIN])
     bikes = Bike.select(:id).where('gate_number != -1')
   rescue NotAuthorized => e
-    return json msg: e.message, status: 401
+    return json msg: e.message, status: UNAUTHORIZED
   end
   
-  json data: BikePresenter.wrap!(bikes), status: 200
+  json data: BikePresenter.wrap!(bikes), status: OK
 end 
 
 get '/has_rent' do
@@ -142,10 +148,10 @@ get '/has_rent' do
     user = UserAuthenticator.new.authenticate(params[:login], params[:PIN])
     res = use_case.has_rent?(user)
   rescue NotAuthorized => e
-    return json msg: e.message, status: 401
+    return json msg: e.message, status: UNAUTHORIZED
   end
 
-  json data: res, status: 200
+  json data: res, status: OK
 end
 
 post '/start_rent' do
@@ -154,14 +160,14 @@ post '/start_rent' do
 
   begin
     user = UserAuthenticator.new.authenticate(params[:login], params[:PIN])
-    res = use_case.open_rent(user, params[:bike_id])
+    res = use_case.open_rent(user, params[:bikeId])
   rescue AlreadyHaveRent => e
-    return json msg: e.message, status: 403
+    return json msg: e.message, status: FORBIDDEN
   rescue NotAuthorized => e
-    return json msg: e.message, status: 401
+    return json msg: e.message, status: UNAUTHORIZED
   end
 
-  json data: res, status: 202
+  json data: res, status: ACCEPTED
 end
 
 post '/close_rent' do
@@ -170,16 +176,16 @@ post '/close_rent' do
 
   begin
     user = UserAuthenticator.new.authenticate(params[:login], params[:PIN])
-    res = use_case.close_rent(user, params[:gate_number])
+    res = use_case.close_rent(user, params[:gateNumber])
   rescue NotAuthorized => e
-    return json msg: e.message, status: 401
+    return json msg: e.message, status: UNAUTHORIZED
   rescue HaveNotRent => e
-    return json msg: e.message, status: 403
+    return json msg: e.message, status: FORBIDDEN
   rescue GateNumberInUse => e
-    return json msg: e.message, status: 403
+    return json msg: e.message, status: FORBIDDEN
   end
   
-  json date: res, status: 202
+  json date: res, status: ACCEPTED
 end
 
 class AlreadyHaveRent < StandardError; end
