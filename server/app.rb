@@ -4,12 +4,18 @@ require 'sequel'
 require 'sqlite3'
 require 'rack/parser'
 
+OK = 200
+ACCEPTED = 202
+UNAUTHORIZED = 401
+FORBIDDEN = 403
+NOT_FOUND = 404
+
+
 use Rack::Parser, :content_types => {
   'application/json'  => Proc.new { |body| ::MultiJson.decode body }
 }
 
 DB = Sequel.sqlite('bike_station.db')
-
 
 unless DB.table_exists? (:users)
   DB.create_table :users do
@@ -62,22 +68,28 @@ class Rent < Sequel::Model(:rents)
 end
 
 class RentService
-  def open_rent(user, bike_id)
+  def open_rent(user, bike_id, station_id)
     raise AlreadyHaveRent.new('User already rent some bike.') if has_rent?(user)
 
-    bike = Bike[bike_id]
+    bike = Bike.where(station_id: station_id, id: bike_id).last
+    raise NotFound.new('Bike not found') if bike.nil?
+
     gate_number = bike.gate_number
-    bike.update(gate_number: -1)
+    bike.update(gate_number: -1, station_id: nil)
     rent = Rent.create(user_id: user.id, bike_id: bike.id, openned_at: DateTime.now)
     
     {gate_number: gate_number, openned_at: rent.openned_at}
   end
 
-  def close_rent(user, gate_number)
+  def close_rent(user, gate_number, station_id)
     rent = Rent.where(closed: false, user_id: user.id).first
     raise HaveNotRent.new('User have not rent to close.') if rent.nil?
+
+    bike = Bike[rent.bike_id]
+    raise NotFound.new('Bike not foud') if bike.nil?
+
     begin
-      Bike[rent.bike_id].update(gate_number: gate_number)
+      bike.update(gate_number: gate_number, station_id: station_id)
     rescue Sequel::ValidationFailed => e
       raise GateNumberInUse.new('This gate is used by another bike.')
     end
@@ -126,12 +138,12 @@ get '/bikes' do
   puts "PARAMS: #{params}"
   begin
     user = UserAuthenticator.new.authenticate(params[:login], params[:PIN])
-    bikes = Bike.select(:id).where('gate_number != -1')
+    bikes = Bike.select(:id).where('gate_number != :gate_number AND station_id = :station_id', gate_number: -1, station_id: params[:stationId])
   rescue NotAuthorized => e
-    return json msg: e.message, status: 401
+    return json msg: e.message, status: UNAUTHORIZED
   end
   
-  json data: BikePresenter.wrap!(bikes), status: 200
+  json data: BikePresenter.wrap!(bikes), status: OK
 end 
 
 get '/has_rent' do
@@ -142,10 +154,10 @@ get '/has_rent' do
     user = UserAuthenticator.new.authenticate(params[:login], params[:PIN])
     res = use_case.has_rent?(user)
   rescue NotAuthorized => e
-    return json msg: e.message, status: 401
+    return json msg: e.message, status: UNAUTHORIZED
   end
 
-  json data: res, status: 200
+  json data: res, status: OK
 end
 
 post '/start_rent' do
@@ -154,14 +166,16 @@ post '/start_rent' do
 
   begin
     user = UserAuthenticator.new.authenticate(params[:login], params[:PIN])
-    res = use_case.open_rent(user, params[:bike_id])
+    res = use_case.open_rent(user, params[:bikeId], params[:stationId])
   rescue AlreadyHaveRent => e
-    return json msg: e.message, status: 403
+    return json msg: e.message, status: FORBIDDEN
   rescue NotAuthorized => e
-    return json msg: e.message, status: 401
+    return json msg: e.message, status: UNAUTHORIZED
+  rescue NotFound => e
+    return json msg: e.message, status: NOT_FOUND
   end
 
-  json data: res, status: 202
+  json data: res, status: ACCEPTED
 end
 
 post '/close_rent' do
@@ -170,19 +184,22 @@ post '/close_rent' do
 
   begin
     user = UserAuthenticator.new.authenticate(params[:login], params[:PIN])
-    res = use_case.close_rent(user, params[:gate_number])
+    res = use_case.close_rent(user, params[:gateNumber], params[:stationId])
   rescue NotAuthorized => e
-    return json msg: e.message, status: 401
+    return json msg: e.message, status: UNAUTHORIZED
   rescue HaveNotRent => e
-    return json msg: e.message, status: 403
+    return json msg: e.message, status: FORBIDDEN
   rescue GateNumberInUse => e
-    return json msg: e.message, status: 403
+    return json msg: e.message, status: FORBIDDEN
+  rescue NotFound => e
+    return json msg: e.message, status: NOT_FOUND
   end
   
-  json date: res, status: 202
+  json date: res, status: ACCEPTED
 end
 
 class AlreadyHaveRent < StandardError; end
 class NotAuthorized < StandardError; end
 class HaveNotRent < StandardError; end
 class GateNumberInUse < StandardError; end
+class NotFound < StandardError; end
