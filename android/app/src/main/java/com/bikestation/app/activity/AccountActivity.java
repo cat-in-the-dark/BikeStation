@@ -30,6 +30,14 @@ public class AccountActivity extends ActionBarActivity {
         setContentView(R.layout.activity_account);
         ButterKnife.inject(this);
 
+        SharedPreferences settings = getSharedPreferences("bike", 0);
+        String login = settings.getString("login", null);
+        String password = settings.getString("password", null);
+
+        if (login != null){
+            etLogin.setText(login);
+        }
+
         btnEnter.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {

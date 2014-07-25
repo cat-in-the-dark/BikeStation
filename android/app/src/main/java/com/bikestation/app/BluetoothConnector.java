@@ -18,6 +18,10 @@ public class BluetoothConnector {
     private OutputStream output;
     String name;
 
+    public boolean isConnected(){
+        return bluetoothSocket != null;
+    }
+
     public void connect(String address) throws IOException {
         if (bluetoothSocket != null)
             disconnect();

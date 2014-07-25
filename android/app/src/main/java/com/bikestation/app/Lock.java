@@ -1,19 +1,18 @@
 package com.bikestation.app;
 
-import android.accounts.Account;
-import android.accounts.AccountManager;
 import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.AsyncTask;
 import android.util.Log;
 import android.view.View;
-import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.ProgressBar;
+import android.widget.Toast;
 
 import com.bikestation.app.activity.BikesActivity;
-import com.bikestation.app.activity.InvitationActivity;
 import com.bikestation.app.activity.TimeActivity;
 import com.bikestation.app.adapter.BikesAdapter;
 import com.kdravolin.smartlock.app.R;
@@ -219,9 +218,75 @@ public class Lock {
 
         protected void onPostExecute(String result) {
             if ("OK".equals(status)) {
+//                SharedPreferences settings = getSharedPreferences("bike", 0);
+//                SharedPreferences.Editor editor = settings.edit();
+//                editor.putString("login", etLogin.getText().toString());
                 Intent intent = new Intent(activity, TimeActivity.class);
                 activity.startActivity(intent);
+                activity.finish();
             }
+        }
+    }
+
+    public static class ReturnBikeTask extends AsyncTask<String, String, String> {
+
+        private final Activity activity;
+        private String status;
+
+        public ReturnBikeTask(Activity activity){
+            this.activity = activity;
+        }
+
+        protected void onPreExecute() {
+        }
+
+        @Override
+        protected String doInBackground(String... strings) {
+            BluetoothConnector connector = ExtApp.bluetoothConnector;
+            try {
+                JSONObject helloRequest = new JSONObject();
+                helloRequest.put("command", "returnBike");
+                connector.send(helloRequest.toString());
+
+                String response = connector.recieve();
+                JSONParser parser = new JSONParser();
+                JSONObject responseJson;
+                try {
+                    responseJson = (JSONObject)parser.parse(response);
+                } catch (ParseException e) {
+                    return null;
+                }
+                status = responseJson.get("status").toString();
+                if (!status.equals("OK"))
+                    return null;
+            } catch (IOException e) {
+                Log.e("Bluetooth", "ConnectionTask error" + e.getMessage());
+                try {
+                    connector.disconnect();
+                } catch (IOException e1) {
+                    return null;
+                }
+            }
+            return null;
+        }
+
+        protected void onPostExecute(String result) {
+            try {
+                ExtApp.bluetoothConnector.disconnect();
+            } catch (IOException e) {
+            }
+            Context context = activity.getApplicationContext();
+            int duration = Toast.LENGTH_SHORT;
+            CharSequence text;
+            if ("OK".equals(status)) {
+                text = "Вы вернули велосипед. Спасибо за использование сервиса.";
+                ((TimeActivity)activity).setButtonConnectedState(true);
+            } else {
+                text = "Ошибка соединения. Пожалуйста попробуйте подключиться снова.";
+                ((TimeActivity)activity).setButtonConnectedState(false);
+            }
+            Toast toast = Toast.makeText(context, text, duration);
+            toast.show();
         }
     }
 }

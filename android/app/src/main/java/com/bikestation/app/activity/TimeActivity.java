@@ -6,6 +6,8 @@ import android.support.v7.app.ActionBarActivity;
 import android.view.View;
 import android.widget.Button;
 
+import com.bikestation.app.BluetoothConnector;
+import com.bikestation.app.ExtApp;
 import com.bikestation.app.Lock;
 import com.kdravolin.smartlock.app.R;
 
@@ -23,21 +25,38 @@ public class TimeActivity extends ActionBarActivity {
         setContentView(R.layout.activity_time);
         ButterKnife.inject(this);
 
-
-        Intent intent = getIntent();
-        String status = intent.getStringExtra("status");
-        String login = intent.getStringExtra("login");
-        String password = intent.getStringExtra("password");
+        BluetoothConnector connector = ExtApp.bluetoothConnector;
+        if (connector.isConnected()) {
+            setButtonConnectedState(true);
+        }
 
         button.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                Intent intent = TimeActivity.this.getIntent();
-                String login = intent.getStringExtra("login");
-                String password = intent.getStringExtra("password");
-//                Lock.OpenTask open = new Lock.OpenTask(login, password, button);
-//                open.execute();
+                Lock.ReturnBikeTask task = new Lock.ReturnBikeTask(TimeActivity.this);
+                task.execute();
             }
         });
+    }
+
+    public void setButtonConnectedState(boolean connected){
+        if (connected){
+            button.setText("Вернуть на стоянку");
+            button.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                    Lock.ReturnBikeTask task = new Lock.ReturnBikeTask(TimeActivity.this);
+                    task.execute();
+                }
+            });
+        }else{
+            button.setText("Найти велостоянку");
+            button.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                    TimeActivity.this.finish();
+                }
+            });
+        }
     }
 }

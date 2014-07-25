@@ -31,7 +31,7 @@ public class BikesActivity extends ActionBarActivity {
         lvBikes.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                DeviceAdapter adapter = (DeviceAdapter) parent.getAdapter();
+                BikesAdapter adapter = (BikesAdapter) parent.getAdapter();
                 String bikeId = (String) adapter.getItem(position);
 
                 Lock.GetBikeTask task = new Lock.GetBikeTask(BikesActivity.this, bikeId);
